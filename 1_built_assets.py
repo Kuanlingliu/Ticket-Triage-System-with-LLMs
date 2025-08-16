@@ -1,4 +1,3 @@
-## new version
 import pandas as pd
 import faiss
 from sentence_transformers import SentenceTransformer
@@ -16,52 +15,83 @@ drive.mount('/content/drive')
 DRIVE_PROJECT_PATH = "/content/drive/MyDrive/Datel_Project"
 ASSETS_DIR = os.path.join(DRIVE_PROJECT_PATH, "assets")
 
-def create_vector_database(df, model):
-    """Encodes solutions into vectors and saves them in a FAISS index for fast retrieval."""
-    logging.info("Creating vector database for solution retrieval...")
+def create_enhanced_vector_database(main_df, history_df, model):
+    """
+    Encodes the full conversation history of tickets into vectors 
+    and saves them in a FAISS index for enhanced retrieval.
+    """
+    logging.info("Creating ENHANCED vector database for solution retrieval...")
 
-    if 'SOLUTION' not in df.columns:
-        logging.warning("'SOLUTION' column not found. Skipping vector database creation.")
+    # --- Step 1: Process and aggregate the history data ---
+    logging.info("Aggregating ticket conversation histories...")
+    # Drop rows with no description
+    history_df = history_df.dropna(subset=['ACTIVITYDESC']).copy() # Use .copy() to avoid SettingWithCopyWarning
+    
+    # --- HIGHLIGHTED CHANGE: Convert all activity descriptions to string type ---
+    # This line fixes the TypeError by ensuring all items are strings before joining.
+    history_df['ACTIVITYDESC'] = history_df['ACTIVITYDESC'].astype(str)
+    
+    history_df['CREATEDATE'] = pd.to_datetime(history_df['CREATEDATE'])
+    history_df = history_df.sort_values(by=['TICKETID', 'CREATEDATE'])
+    
+    # Group by TICKETID and join all descriptions into a single text block
+    # This creates a full story for each ticket
+    aggregated_history = history_df.groupby('TICKETID')['ACTIVITYDESC'].apply(
+        lambda activities: "\n---\n".join(activities)
+    ).reset_index()
+    aggregated_history.rename(columns={'ACTIVITYDESC': 'FULL_HISTORY'}, inplace=True)
+
+    # --- Step 2: Merge aggregated history back into the main dataframe ---
+    logging.info("Merging full histories with main ticket data...")
+    merged_df = pd.merge(main_df, aggregated_history, on='TICKETID', how='left')
+    
+    # --- Step 3: Create a single "knowledge" column ---
+    # We prioritize the full history. If it doesn't exist, we fall back to the final SOLUTION.
+    merged_df['KNOWLEDGE_TEXT'] = merged_df['FULL_HISTORY'].fillna(merged_df['SOLUTION'])
+    
+    # Filter out tickets that have no knowledge text at all
+    df_knowledge = merged_df.dropna(subset=['KNOWLEDGE_TEXT']).copy()
+    df_knowledge = df_knowledge[df_knowledge['KNOWLEDGE_TEXT'].str.strip() != '']
+
+    if df_knowledge.empty:
+        logging.warning("No knowledge text found to build the vector database. Skipping.")
         return
 
-    df_solved = df.dropna(subset=['SOLUTION']).copy()
-    df_solved = df_solved[df_solved['SOLUTION'].str.strip() != '']
+    # --- Step 4: Encode the new knowledge text and build the FAISS index ---
+    logging.info(f"Encoding {len(df_knowledge)} enriched ticket knowledge documents...")
+    knowledge_embeddings = model.encode(df_knowledge['KNOWLEDGE_TEXT'].tolist(), convert_to_tensor=True, show_progress_bar=True)
 
-    if df_solved.empty:
-        logging.warning("No solved tickets found to build the vector database. Skipping.")
-        return
+    index = faiss.IndexFlatL2(knowledge_embeddings.shape[1])
+    index.add(knowledge_embeddings.cpu().numpy())
 
-    logging.info(f"Encoding {len(df_solved)} ticket solutions...")
-    solution_embeddings = model.encode(df_solved['SOLUTION'].tolist(), convert_to_tensor=True, show_progress_bar=True)
-
-    index = faiss.IndexFlatL2(solution_embeddings.shape[1])
-    index.add(solution_embeddings.cpu().numpy())
-
+    # --- Step 5: Save the new assets ---
     os.makedirs(ASSETS_DIR, exist_ok=True)
-    faiss.write_index(index, os.path.join(ASSETS_DIR, "ticket_solutions.index"))
-    df_solved.to_pickle(os.path.join(ASSETS_DIR, "ticket_data.pkl"))
+    faiss.write_index(index, os.path.join(ASSETS_DIR, "ticket_knowledge.index"))
+    df_knowledge.to_pickle(os.path.join(ASSETS_DIR, "ticket_knowledge_data.pkl"))
 
-    logging.info(f"✅ Vector database saved to '{ASSETS_DIR}'.")
+    logging.info(f"✅ Enhanced vector database saved to '{ASSETS_DIR}'.")
 
-# --- HIGHLIGHTED CHANGE: Removed the create_competency_matrix function ---
-# As per the action plan, this feature is for future consideration and not needed for the current prototype.
 
 if __name__ == "__main__":
-    logging.info("--- Starting Asset Building Process ---")
+    logging.info("--- Starting Enhanced Asset Building Process ---")
 
-    data_file = "/content/drive/MyDrive/Datel_Project/Copy of Tickets_cleaned.xlsx"
+    # Define file paths
+    main_tickets_file = "/content/drive/MyDrive/Datel_Project/Copy of Tickets_cleaned.xlsx"
+    history_file = "/content/drive/MyDrive/Datel_Project/Ticket history 3.xlsx" # The new history file
+
     try:
-        main_df = pd.read_excel(data_file)
-    except FileNotFoundError:
-        logging.error(f"FATAL: '{data_file}' not found. Please ensure the file exists at this path.")
+        main_df = pd.read_excel(main_tickets_file)
+        history_df = pd.read_excel(history_file)
+    except FileNotFoundError as e:
+        logging.error(f"FATAL: Could not find a data file. Error: {e}")
         exit()
 
+    # Load the sentence transformer model for creating embeddings
     retrieval_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-    # Create the vector database, which is essential for the RAG system
-    create_vector_database(main_df, retrieval_model)
-
-    # --- HIGHLIGHTED CHANGE: Removed the call to create_competency_matrix ---
-
+    # Create the enhanced vector database using both dataframes
+    create_enhanced_vector_database(main_df, history_df, retrieval_model)
+    
     logging.info("--- Asset Building Complete ---")
     print("--- Asset Building Complete ---")
+
