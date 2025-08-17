@@ -55,8 +55,8 @@ def load_and_prepare_data(filepath="/content/drive/MyDrive/Datel_Project/Copy of
     )
     
     # Create a 3-way split (train, validation, test)
-    train_df, temp_df = train_test_split(df, test_size=0.3, random_state=42)
-    val_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=42)
+    train_df, temp_df = train_test_split(df, test_size=0.3, random_state=42, stratify=temp_df['URGENCYCODE'])
+    val_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=42, stratify=temp_df['URGENCYCODE'])
     
     logging.info(f"✅ Data loaded. Train: {len(train_df)}, Validation: {len(val_df)}, Test: {len(test_df)} rows.")
     return train_df, val_df, test_df
