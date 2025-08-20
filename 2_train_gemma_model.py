@@ -177,7 +177,7 @@ def train_optimized_model(model_name, train_df, val_df=None):
     model = get_peft_model(model, lora_config)
 
     output_dir = os.path.join(MODELS_DIR, f"{model_name.split('/')[-1]}_optimized_v15")  # v15 version
-    training_args = TrainingArguments(output_dir=output_dir, overwrite_output_dir=True, per_device_train_batch_size=1, gradient_accumulation_steps=16, gradient_checkpointing=True, learning_rate=5e-5, warmup_steps=100, weight_decay=0.01, num_train_epochs=3, save_strategy="epoch", save_total_limit=1, logging_steps=50, report_to="none", fp16=False, bf16=True, seed=42)  # 增加到3個epoch
+    training_args = TrainingArguments(output_dir=output_dir, overwrite_output_dir=True, per_device_train_batch_size=1, gradient_accumulation_steps=16, gradient_checkpointing=True, learning_rate=5e-5, warmup_steps=100, weight_decay=0.01, num_train_epochs=3, save_strategy="epoch", save_total_limit=1, logging_steps=50, report_to="none", fp16=False, bf16=True, seed=42)
 
     def formatting_func(example):
         return example['text']
