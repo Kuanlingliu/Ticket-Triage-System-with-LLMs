@@ -8,7 +8,6 @@ All relevant code is provided in the Datel_Project_code.ipynb notebook. Output c
 
 When runing the code, you need to input your hugging face token and Authtoken from your ngork website to run the prototype app.
 
-**Prototype Demonstration**  
-You can view the video demonstration of the prototype on [Google Drive](https://drive.google.com/file/d/1PkeEPrntjPpSI7pB1yTZGgUgnQAlC7KT/view?usp=sharing).
+
 
 
