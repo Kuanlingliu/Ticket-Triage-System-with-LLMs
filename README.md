@@ -6,6 +6,8 @@ This repository contains the complete source code for the Extended Research Proj
 
 All relevant code is provided in the Datel_Project_code.ipynb notebook. Output cells have been intentionally cleared to prevent rendering issues and to safeguard sensitive information. The notebook is designed to run seamlessly in Google Colab, utilizing L4 GPU acceleration and integrated with Google Drive for storage and access.
 
+When runing the code, you need to input your hugging face token and Authtoken from your ngork website to run the prototype app.
+
 **Prototype Demonstration**  
 You can view the video demonstration of the prototype on [Google Drive](https://drive.google.com/file/d/1PkeEPrntjPpSI7pB1yTZGgUgnQAlC7KT/view?usp=sharing).
 
