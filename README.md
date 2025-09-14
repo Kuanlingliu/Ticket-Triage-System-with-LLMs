@@ -1,6 +1,6 @@
 # Ticket-Triage-System-with-LLMs
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16995308.svg)](https://doi.org/10.5281/zenodo.16995308) 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17117371.svg)](https://doi.org/10.5281/zenodo.17117371) 
 
 This repository contains the complete source code for the Extended Research Project submitted as part of the MSc in Data Science. Due to data privacy constraints, the datasets and trained models used in this project are not included.
 
